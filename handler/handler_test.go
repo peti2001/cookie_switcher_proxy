@@ -37,7 +37,7 @@ var _ = Describe("Handler", func() {
 			})
 			It("Should not remove a cookie even if no need to change", func() {
 				//Arrange
-				cs := handler.NewCookieSwitcherHandler([]string{})
+				cs := handler.NewCookieSwitcherHandler([]string{"XSRF-TOKEN"})
 				cs.SetReplacedCookies(map[string]string{})
 				r := &http.Request{
 					Header: map[string][]string{"Cookie": {"LS_CSRF_TOKEN=a; XSRF-TOKEN=b; laravel_session=c"}},
@@ -58,6 +58,34 @@ var _ = Describe("Handler", func() {
 				Expect(csrfTokenCookie.Value).To(Equal("a"))
 				Expect(xsrfTokenCookie.Value).To(Equal("b"))
 				Expect(sessionCookie.Value).To(Equal("c"))
+			})
+		})
+
+		Context("Response handler", func() {
+			It("Should update the replaced cookies if there is a Set-Cookie header", func() {
+				//Arrange
+				cs := handler.NewCookieSwitcherHandler([]string{"laravel_session", "XSRF-TOKEN"})
+				r := &http.Response{
+					Header: map[string][]string{"Set-Cookie": {
+						"laravel_session=new_value2; expires=Mon, 10-Dec-2018 22:01:30 GMT; Max-Age=7200; path=/; httponly",
+						"XSRF-TOKEN=new_value; expires=Mon, 10-Dec-2018 22:01:30 GMT; Max-Age=7200; path=/",
+					}},
+				}
+				ctx := &goproxy.ProxyCtx{}
+
+				//Act
+				cs.ResponseHandler(r, ctx)
+
+				//Assert
+				replacedCookies := cs.ReplacedCookies()
+				Expect(len(replacedCookies)).To(Equal(2))
+				sessionCookie, ok := replacedCookies["laravel_session"]
+				Expect(ok).To(Equal(true))
+				Expect(sessionCookie).To(Equal("new_value2"))
+				xsrfTokenCookie, ok := replacedCookies["XSRF-TOKEN"]
+				Expect(ok).To(Equal(true))
+				Expect(xsrfTokenCookie).To(Equal("new_value"))
+
 			})
 		})
 	})

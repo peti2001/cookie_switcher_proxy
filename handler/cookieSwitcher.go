@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strings"
+	"log"
 
 	"github.com/elazarl/goproxy"
 )
@@ -39,6 +40,12 @@ func (cs *cookieSwitcher) isInTheList(cookieName string) bool {
 }
 
 func (cs *cookieSwitcher) ResponseHandler(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
+	newCookies := resp.Cookies()
+	for _, cookie := range newCookies {
+		cs.replacedCookies[cookie.Name] = cookie.Value
+		log.Println("Set Cookie:", cookie.Name, ":", cookie.Value)
+	}
+
 	return resp
 }
 
